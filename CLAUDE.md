@@ -3,17 +3,11 @@
 ## Current Phase
 
 Phase 1 — NPC interaction loop. Currently building the examination
-camera zoom. Existing systems that work: NPC ProximityPrompt trigger,
-interaction GUI opening, NPC freeze with timeout. Do not modify these
-unless explicitly asked.
-
-## Known Issues (Being Resolved)
-
-The current file structure has some drift from these rules. Do not assume
-the rules describe the current state perfectly. When asked about NPCData
-specifically, verify which file is actually being required by other
-modules before making changes — there are multiple files with that name
-right now and the duplication is being cleaned up.
+camera zoom on top of the existing interaction flow. Existing systems
+that work and must not be modified unless explicitly asked: NPC
+ProximityPrompt trigger, interaction GUI opening (TreatmentPanelUI),
+NPC freeze with timeout, NPC stage data (NPCData.lua in src/server/npc/),
+NPC stage progression, treatment handler.
 
 ## Game
 
