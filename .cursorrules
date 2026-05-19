@@ -1,5 +1,12 @@
 # Plague Doctor — Project Rules
 
+## Current Phase
+
+Phase 1 — NPC interaction loop. Currently building the examination
+camera zoom. Existing systems that work: NPC ProximityPrompt trigger,
+interaction GUI opening, NPC freeze with timeout. Do not modify these
+unless explicitly asked.
+
 ## Game
 
 Plague Doctor is a Roblox game written in Luau. Genre: medieval strategy
@@ -38,7 +45,7 @@ Subfolders become Roblox `Folder` instances. Use the existing folders:
 - `src/shared/data/`      SymptomData, ItemData, DialogueData
 - `src/shared/rules/`     TreatmentRules
 - `src/client/ui/`        ScreenGui logic (treatment panel, journal, etc.)
-- `src/client/world/`     proximity detector, dialogue display
+- `src/client/world/`     proximity detector, dialogue display, camera control
 - `src/client/hud/`       persistent HUD, infection VFX
 
 ## File Extensions (IMPORTANT)
@@ -145,6 +152,33 @@ NPCData -> NPCStageTimer -> NPCVisuals -> ProximityDetector ->
 TreatmentPanelUI -> SatchelData -> TreatmentHandler -> JournalData. Do
 not start later phases (district pool, crafting, map) until Phase 1 is
 fully working.
+
+## Working With Existing Code
+
+- Before making changes, identify the specific files that need to be
+  modified and list them. Wait for confirmation before editing if the
+  list seems large or unexpected.
+- Keep changes scoped to the requested task. Do not refactor unrelated
+  code, even if it looks improvable.
+- Do not add features that were not requested.
+- Do not delete code that appears unused without confirming it is unused.
+- If the requested change conflicts with existing patterns in the
+  codebase, surface the conflict and ask before resolving it.
+- If a request is ambiguous, ask a clarifying question rather than
+  guessing.
+- After making changes, summarize what was changed in 2-3 sentences and
+  identify any edge cases or follow-ups the user should be aware of.
+
+## Git Workflow
+
+- The user uses git for version control. The repo is at
+  https://github.com/Parham-Ebrahimi/Plague-Doctor.
+- The user prefers to make their own commits rather than have them
+  generated automatically.
+- When changes are made, briefly suggest what the next commit message
+  could be, but do not run git commands unless explicitly asked.
+- Never run `git reset --hard`, `git push --force`, `git rebase`, or
+  `git clean` without explicit confirmation, even if asked.
 
 ## When Asked to Write Code
 

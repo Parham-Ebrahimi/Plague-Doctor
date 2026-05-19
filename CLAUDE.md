@@ -1,5 +1,20 @@
 # Plague Doctor — Project Rules
 
+## Current Phase
+
+Phase 1 — NPC interaction loop. Currently building the examination
+camera zoom. Existing systems that work: NPC ProximityPrompt trigger,
+interaction GUI opening, NPC freeze with timeout. Do not modify these
+unless explicitly asked.
+
+## Known Issues (Being Resolved)
+
+The current file structure has some drift from these rules. Do not assume
+the rules describe the current state perfectly. When asked about NPCData
+specifically, verify which file is actually being required by other
+modules before making changes — there are multiple files with that name
+right now and the duplication is being cleaned up.
+
 ## Game
 
 Plague Doctor is a Roblox game written in Luau. Genre: medieval strategy
@@ -28,18 +43,18 @@ quarantine, day/night cycle, plague mutation, morale.
 
 Subfolders become Roblox `Folder` instances. Use the existing folders:
 
-- `src/server/npc/`       NPC stage data, visuals, rats
+- `src/server/npc/`       NPC stage data, NPC visuals, rat behaviour and nest systems
 - `src/server/plague/`    infection pool, mutation, investigations
-- `src/server/player/`    satchel, treatment, player infection
+- `src/server/player/`    satchel, treatment, player infection, chest/pickup handlers
 - `src/server/world/`     day/night, wells, morale, map data
-- `src/server/data/`      journal, persistence
+- `src/server/data/`      journal data and the handler that processes journal RemoteEvents, persistence
 - `src/server/crafting/`  crafting handler
 - `src/shared/core/`      RemoteEvents, GameConstants, InfectionStages
-- `src/shared/data/`      SymptomData, ItemData, DialogueData
+- `src/shared/data/`      data containers shared between server and client (ItemData, SymptomData, DialogueData, NPCData)
 - `src/shared/rules/`     TreatmentRules
-- `src/client/ui/`        ScreenGui logic (treatment panel, journal, etc.)
-- `src/client/world/`     proximity detector, dialogue display
-- `src/client/hud/`       persistent HUD, infection VFX
+- `src/client/ui/`        ScreenGui logic (treatment panel, journal, crafting, map, chest)
+- `src/client/world/`     proximity detector, dialogue display, camera control
+- `src/client/hud/`       persistent HUD, infection VFX, camera controller
 
 ## File Extensions (IMPORTANT)
 
@@ -138,13 +153,32 @@ RE.AttemptTreatment:FireServer(npc, item)
 Server handlers always validate the player and inputs before mutating
 state.
 
-## Build Order
+## Working With Existing Code
 
-Follow the phased build plan in `docs/`. Phase 1 = NPC interaction loop:
-NPCData -> NPCStageTimer -> NPCVisuals -> ProximityDetector ->
-TreatmentPanelUI -> SatchelData -> TreatmentHandler -> JournalData. Do
-not start later phases (district pool, crafting, map) until Phase 1 is
-fully working.
+- Before making changes, identify the specific files that need to be
+  modified and list them. Wait for confirmation before editing if the
+  list seems large or unexpected.
+- Keep changes scoped to the requested task. Do not refactor unrelated
+  code, even if it looks improvable.
+- Do not add features that were not requested.
+- Do not delete code that appears unused without confirming it is unused.
+- If the requested change conflicts with existing patterns in the
+  codebase, surface the conflict and ask before resolving it.
+- If a request is ambiguous, ask a clarifying question rather than
+  guessing.
+- After making changes, summarize what was changed in 2-3 sentences and
+  identify any edge cases or follow-ups the user should be aware of.
+
+## Git Workflow
+
+- The user uses git for version control. The repo is at
+  https://github.com/Parham-Ebrahimi/Plague-Doctor.
+- The user prefers to make their own commits rather than have them
+  generated automatically.
+- When changes are made, briefly suggest what the next commit message
+  could be, but do not run git commands unless explicitly asked.
+- Never run `git reset --hard`, `git push --force`, `git rebase`, or
+  `git clean` without explicit confirmation, even if asked.
 
 ## When Asked to Write Code
 
