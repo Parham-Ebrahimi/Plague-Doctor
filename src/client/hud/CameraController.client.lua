@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConstants = require(Shared.core.GameConstants)
@@ -35,6 +36,24 @@ local swayTime = 0
 
 local currentCameraCFrame = camera.CFrame
 
+-- Examination camera. While inExamination is true the normal per-frame camera
+-- and stamina/walkspeed loop is suspended so a TweenService tween on the
+-- scriptable camera can hold instead of being overwritten every frame.
+local EXAM_DISTANCE = 5
+local EXAM_CHEST_OFFSET = 0.5
+local EXAM_TWEEN_INFO = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local inExamination = false
+local examTween = nil
+local preExamCFrame = nil
+-- The pose onRenderStep pins the camera to after the enter tween completes.
+-- nil while an enter/exit tween is actively driving camera.CFrame (the tween
+-- owns it then); set by the enter tween's Completed, cleared on exit.
+local examHeldCFrame = nil
+-- Per-BasePart LocalTransparencyModifier fade tweens, keyed by part, so a
+-- quick re-entry/exit can cancel an in-flight fade cleanly (Fix 4).
+local examPartTweens = {}
+
 local character = nil
 local humanoid = nil
 local humanoidRootPart = nil
@@ -66,6 +85,12 @@ camera.FieldOfView = 70
 local setGuiOpen = Instance.new("BindableEvent")
 setGuiOpen.Name = "SetGuiOpen"
 setGuiOpen.Parent = script
+
+-- TreatmentPanelUI fires this to drive the examination camera:
+-- Fire(true, npc) on panel open, Fire(false) on panel close.
+local setExamining = Instance.new("BindableEvent")
+setExamining.Name = "SetExamining"
+setExamining.Parent = script
 
 -- ---------------------------------------------------------------------------
 -- Stamina bar UI
@@ -422,6 +447,199 @@ local function setMode(mode)
 end
 
 -- ---------------------------------------------------------------------------
+-- Examination camera
+-- ---------------------------------------------------------------------------
+
+-- Camera 5 studs directly in front of the NPC (along its HRP LookVector), at
+-- chest height, looking back at the NPC.
+local function computeExamCFrame(npc)
+	if not npc then
+		return nil
+	end
+	local npcRoot = npc:FindFirstChild("HumanoidRootPart")
+	if not npcRoot then
+		return nil
+	end
+	local chestPos = npcRoot.Position + Vector3.new(0, EXAM_CHEST_OFFSET, 0)
+	local camPos = chestPos + npcRoot.CFrame.LookVector * EXAM_DISTANCE
+	return CFrame.lookAt(camPos, chestPos)
+end
+
+-- Fade every BasePart of the local character to hidden over the camera-tween
+-- duration, reusing the hiddenParts table (skipped by resetCharacterTransparency
+-- so the 1 Hz reset loop will not fight the fade). Fix 3: never call
+-- restoreHiddenParts here and never re-touch an already-tracked part, so
+-- re-examining while still hidden does not flash the character back to visible.
+local function hideAllCharacterParts()
+	if not character then
+		return
+	end
+	for _, descendant in character:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			-- Only record an original the first time so a mid-fade value is
+			-- never stored as the "original" on a quick re-entry.
+			if hiddenParts[descendant] == nil then
+				hiddenParts[descendant] = descendant.LocalTransparencyModifier
+			end
+			-- Cancel any in-flight fade for this part (e.g. a restore fade
+			-- from a previous exit) before driving it to hidden.
+			local existing = examPartTweens[descendant]
+			if existing then
+				existing:Cancel()
+				examPartTweens[descendant] = nil
+			end
+			if descendant.LocalTransparencyModifier ~= 1 then
+				local fade = TweenService:Create(
+					descendant,
+					EXAM_TWEEN_INFO,
+					{ LocalTransparencyModifier = 1 }
+				)
+				examPartTweens[descendant] = fade
+				fade:Play()
+			end
+		end
+	end
+end
+
+local function enterExamination(npc)
+	if inExamination then
+		-- Panel cannot reopen until the server round-trip completes, by which
+		-- time the 0.6s exit tween has finished; a stale enter is ignored.
+		return
+	end
+
+	local target = computeExamCFrame(npc)
+	if not target then
+		warn("[CameraController] examination NPC has no HumanoidRootPart; camera unchanged.")
+		return
+	end
+
+	inExamination = true
+	preExamCFrame = camera.CFrame
+	-- Cleared so onRenderStep does not pin a stale pose while the enter tween
+	-- is the active owner of camera.CFrame; the tween's Completed sets it.
+	examHeldCFrame = nil
+
+	if humanoid then
+		humanoid.WalkSpeed = 0
+	end
+	hideAllCharacterParts()
+
+	-- Create and assign the new camera tween before cancelling the previous
+	-- one. Tween:Cancel() also fires Completed; in this order the stale exit
+	-- tween's guarded callback sees examTween already pointing at the new
+	-- tween and bails (Fix 1, robust under Immediate and Deferred signals).
+	local previousTween = examTween
+	examTween = TweenService:Create(camera, EXAM_TWEEN_INFO, { CFrame = target })
+	local thisTween = examTween
+	thisTween.Completed:Connect(function()
+		-- Same stale-tween guard as exitExamination: Cancel() also fires
+		-- Completed, so only pin the held pose if we are still the active
+		-- enter tween (a later enter/exit may have replaced us).
+		if examTween ~= thisTween then
+			return
+		end
+		-- Pin to the same target the tween animated to so onRenderStep holds
+		-- the camera here instead of the default camera taking over.
+		examHeldCFrame = target
+	end)
+	if previousTween then
+		previousTween:Cancel()
+	end
+	examTween:Play()
+end
+
+local function exitExamination()
+	if not inExamination then
+		return
+	end
+
+	-- NOTE: examHeldCFrame is deliberately NOT cleared here. Clearing it before
+	-- the exit tween owns camera.CFrame leaves a frame where onRenderStep
+	-- writes nothing (inExamination still true, examHeldCFrame nil) and the
+	-- camera is unowned -> snap. It is cleared one render frame after the exit
+	-- tween's Play() instead (see the deferred clear below).
+
+	-- Fix 4: fade the character back in over the same 0.6s / Quad-Out as the
+	-- camera instead of an instant restore. Cancel any in-flight hide fade per
+	-- part first. hiddenParts is intentionally left populated until the fade
+	-- finishes so resetCharacterTransparency keeps skipping these parts.
+	for part, originalValue in hiddenParts do
+		if part and part.Parent then
+			local existing = examPartTweens[part]
+			if existing then
+				existing:Cancel()
+			end
+			local fade = TweenService:Create(
+				part,
+				EXAM_TWEEN_INFO,
+				{ LocalTransparencyModifier = originalValue }
+			)
+			examPartTweens[part] = fade
+			fade:Play()
+		end
+	end
+	-- WalkSpeed is restored by updateStamina once inExamination clears.
+
+	-- Assign the new exit tween before cancelling the previous one, same
+	-- ordering rationale as enterExamination.
+	local previousTween = examTween
+	local restoreCFrame = preExamCFrame or camera.CFrame
+	local thisTween = TweenService:Create(camera, EXAM_TWEEN_INFO, { CFrame = restoreCFrame })
+	examTween = thisTween
+	if previousTween then
+		previousTween:Cancel()
+	end
+	thisTween.Completed:Connect(function()
+		-- Fix 1: Tween:Cancel() also fires Completed. Only act if we are still
+		-- the active exit tween; a new examination may have replaced us, in
+		-- which case this is a stale callback and must not flip state.
+		if examTween ~= thisTween then
+			return
+		end
+		-- Seed the third-person lerp accumulator with where the tween landed so
+		-- the normal scriptable camera resumes without a snap. CameraType stays
+		-- Scriptable throughout; this game has no Custom camera to return to.
+		currentCameraCFrame = camera.CFrame
+		inExamination = false
+		-- Defensive: ensure no stale held pose leaks into the next examination.
+		examHeldCFrame = nil
+
+		-- Finalize the restore now the fade is complete: snap to the exact
+		-- originals, then clear the tracking tables so the 1 Hz reset loop
+		-- resumes ownership of these parts.
+		for part, originalValue in hiddenParts do
+			if part and part.Parent then
+				part.LocalTransparencyModifier = originalValue
+			end
+		end
+		table.clear(hiddenParts)
+		table.clear(examPartTweens)
+
+		-- FP normally hides the head/accessories; reinstate after the
+		-- full-body restore so the player does not see their own head.
+		if currentMode == MODE_FIRST then
+			hideHeadAndAccessories()
+		end
+	end)
+	thisTween:Play()
+
+	-- Keep the held pose written by onRenderStep for one more render frame so
+	-- camera.CFrame is never unowned during the handoff to the exit tween. The
+	-- tween's first interpolated write starts from the held pose anyway, so the
+	-- one-frame overlap is visually identical and avoids the unowned-frame snap.
+	-- Same stale-tween guard as the Completed handlers: bail if a newer tween
+	-- has replaced us before the deferred clear runs.
+	task.spawn(function()
+		RunService.RenderStepped:Wait()
+		if examTween ~= thisTween then
+			return
+		end
+		examHeldCFrame = nil
+	end)
+end
+
+-- ---------------------------------------------------------------------------
 -- Render step (camera + stamina)
 -- ---------------------------------------------------------------------------
 
@@ -454,6 +672,24 @@ local function onRenderStep(dt)
 			yaw = yaw - dxDeg
 		end
 		pitch = math.clamp(pitch - dyDeg, PITCH_MIN_DEG, PITCH_MAX_DEG)
+	end
+
+	-- During examination the camera is owned by the examination tween (or held
+	-- at the target CFrame after it completes). Skip the normal camera and the
+	-- stamina/walkspeed loop so neither fights the tween nor undoes WalkSpeed=0.
+	-- The GUI cursor block above still runs so the panel stays usable.
+	if inExamination then
+		-- A tween does not hold a property after it completes; it only
+		-- animates to it. While the enter tween is still playing,
+		-- examHeldCFrame is nil and the tween itself owns camera.CFrame, so we
+		-- skip the write. Once the enter tween completes it pins examHeldCFrame
+		-- and we re-assert it every frame, otherwise the default camera would
+		-- take over the moment the tween releases the property. updateStamina
+		-- and the camera-solve functions still do not run during examination.
+		if examHeldCFrame then
+			camera.CFrame = examHeldCFrame
+		end
+		return
 	end
 
 	updateStamina(dt)
@@ -539,6 +775,14 @@ setGuiOpen.Event:Connect(function(open)
 		unlockMouse()
 	else
 		lockMouse()
+	end
+end)
+
+setExamining.Event:Connect(function(active, npc)
+	if active then
+		enterExamination(npc)
+	else
+		exitExamination()
 	end
 end)
 
