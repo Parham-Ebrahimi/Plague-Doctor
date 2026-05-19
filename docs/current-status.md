@@ -81,6 +81,7 @@ system on top of the existing camera prototype.
   this actually blocks reveals or just looks odd.
 - House-visits vs. street-examination model: tentatively committed to
   house-visits but no implementation yet
+- Whether no-op clicks during body-region examination should produce visual feedback (a brief flash, a sound, a cursor change) to distinguish them from genuinely broken clicks. Currently a click that hits an unmapped part or a region whose humour is already revealed produces zero feedback, which is indistinguishable from a click that did nothing because something is broken. Playtest of body-region clicking revealed this generates false bug reports; deferred because the right answer involves a visual-design decision rather than a code change.
 
 ## Locked Design Commitments
 - Four humours: Blood, Phlegm, Yellow Bile, Black Bile, range -20 to +20
