@@ -6,6 +6,17 @@
 
 ---
 
+# Spec Doc — NPC Interaction System
+
+> **STATUS: SUPERSEDED.** This document describes the original
+> street-examination + symptom-tag + remedy-selection design.
+> The current design uses house visits + four-humours examination.
+> Retained for historical reference and for ideas worth pulling
+> forward (morale effects, dialogue conditions, edge cases,
+> journal entry structure).
+>
+> See `docs/current-status.md` for the active design.
+
 ## 1. Overview
 
 This document specifies the full behaviour of the player interacting with an NPC — from the moment the player visually notices them, to the moment the interaction resolves. This is the most frequent action in the game and the primary expression of the treat verb. Every decision made in this system affects the journal, the district infection pool, NPC state, morale, and the player's satchel inventory.
