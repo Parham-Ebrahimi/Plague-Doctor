@@ -28,6 +28,10 @@ local GameConstants = {
 	EXAM_VALID_RANGE = 7,
 	COMFORT_TIMER = 25,
 
+	-- Humours.
+	HUMOUR_VALUE_MIN = -20,
+	HUMOUR_VALUE_MAX = 20,
+
 	-- Temporary NPC wandering test values.
 	NPC_WANDER_RADIUS = 18,
 	NPC_WANDER_INTERVAL_MIN = 3,

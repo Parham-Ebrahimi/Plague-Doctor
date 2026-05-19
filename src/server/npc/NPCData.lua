@@ -3,6 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local InfectionStages = require(Shared.core.InfectionStages)
+local Humours = require(Shared.core.Humours)
+local GameConstants = require(Shared.core.GameConstants)
 
 local NPCData = {}
 
@@ -31,6 +33,17 @@ local function pickSymptoms(npc)
 	return picks
 end
 
+local function rollHumours()
+	local values = {}
+	for _, humourName in Humours.Names do
+		values[humourName] = math.random(
+			GameConstants.HUMOUR_VALUE_MIN,
+			GameConstants.HUMOUR_VALUE_MAX
+		)
+	end
+	return values
+end
+
 function NPCData.Register(npc)
 	if entries[npc] then
 		return
@@ -47,6 +60,10 @@ function NPCData.Register(npc)
 		quarantined = false,
 		broadSpectrumExpiry = nil,
 		treatedByPlayer = {},
+		-- Humours are generated once at registration and are
+		-- intentionally NOT re-rolled on stage transitions; they
+		-- represent stable patient state, unlike symptoms.
+		humours = rollHumours(),
 	}
 
 	npc:SetAttribute("Stage", startStage)
