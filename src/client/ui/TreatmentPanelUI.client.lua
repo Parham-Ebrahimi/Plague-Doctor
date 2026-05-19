@@ -46,6 +46,7 @@ panel.Position = UDim2.new(0.55, 0, 0, 0)
 panel.BackgroundColor3 = Color3.fromRGB(28, 26, 22)
 panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel = 0
+panel.Active = true
 panel.Visible = false
 panel.Parent = screenGui
 
@@ -219,6 +220,8 @@ setHumour.Event:Connect(function(humourName, value)
 	local valueLabel = humourValueLabels[humourName]
 	if valueLabel then
 		valueLabel.Text = value == nil and HUMOUR_EMPTY or tostring(value)
+	else
+		warn("[TreatmentPanelUI] SetHumour fired with unknown humour name:", humourName)
 	end
 end)
 
@@ -293,7 +296,6 @@ local function openPanel(payload)
 	promptFrame.Visible = false
 	notifyGuiOpen(true)
 	ExaminationState.SetCurrentNPC(payload.npcRef, payload.humours)
-	print("[B playtest open]", ExaminationState.GetCurrentNPC(), game:GetService("HttpService"):JSONEncode(ExaminationState.GetAllHumours()))
 	notifyExamining(true, currentTargetNPC)
 end
 
@@ -303,7 +305,6 @@ local function closePanel(notifyServer)
 	panel.Visible = false
 	currentTargetNPC = nil
 	ExaminationState.ClearCurrentNPC()
-	print("[B playtest close]", ExaminationState.GetCurrentNPC(), ExaminationState.GetAllHumours())
 
 	notifyGuiOpen(false)
 	notifyExamining(false)

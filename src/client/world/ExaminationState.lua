@@ -15,18 +15,26 @@ local ExaminationState = {}
 -- serialises by value, but in-process readers on the same
 -- side could mutate a shared table by accident if the
 -- module handed out its internal reference.
+--
+-- CurrentNPCChanged (BindableEvent, child of this script) fires on each currentNPC transition, carrying the new NPC (or nil).
 
 local currentNPC = nil
 local currentHumours = nil
 
+local currentNPCChanged = Instance.new("BindableEvent")
+currentNPCChanged.Name = "CurrentNPCChanged"
+currentNPCChanged.Parent = script
+
 function ExaminationState.SetCurrentNPC(npc, humourValues)
 	currentNPC = npc
 	currentHumours = humourValues
+	currentNPCChanged:Fire(currentNPC)
 end
 
 function ExaminationState.ClearCurrentNPC()
 	currentNPC = nil
 	currentHumours = nil
+	currentNPCChanged:Fire(nil)
 end
 
 function ExaminationState.GetCurrentNPC()
