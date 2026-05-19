@@ -150,6 +150,17 @@ local function notifyGuiOpen(open)
 	end
 end
 
+local setExamining = cameraControllerScript and cameraControllerScript:WaitForChild("SetExamining", 10)
+if not setExamining then
+	warn("[TreatmentPanelUI] SetExamining BindableEvent missing; examination camera will not engage.")
+end
+
+local function notifyExamining(active, npc)
+	if setExamining then
+		setExamining:Fire(active, npc)
+	end
+end
+
 journalButton.MouseButton1Click:Connect(function()
 	journalToggle:Fire()
 end)
@@ -316,6 +327,7 @@ local function openPanel(payload)
 	panel.Visible = true
 	promptFrame.Visible = false
 	notifyGuiOpen(true)
+	notifyExamining(true, currentTargetNPC)
 end
 
 local function closePanel(notifyServer)
@@ -328,6 +340,7 @@ local function closePanel(notifyServer)
 	canUseQuarantine = false
 
 	notifyGuiOpen(false)
+	notifyExamining(false)
 
 	if notifyServer and npcToClose then
 		RemoteEvents.CloseExamination:FireServer(npcToClose)
