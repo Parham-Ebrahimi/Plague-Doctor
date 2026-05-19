@@ -191,6 +191,22 @@ RemoteEvents.RequestExamination.OnServerEvent:Connect(function(player, npc)
 
 	setActiveExamination(player, npc)
 
+	-- Turn the NPC to face the examining player (Y-axis only) before the client
+	-- computes the examination camera framing from the NPC HumanoidRootPart
+	-- LookVector. Graceful degradation: if either root is missing, skip the
+	-- rotation and continue with the examination as normal.
+	local npcRoot = npc:FindFirstChild("HumanoidRootPart")
+	local playerCharacter = player.Character
+	local playerRoot = playerCharacter and playerCharacter:FindFirstChild("HumanoidRootPart")
+	if npcRoot and playerRoot then
+		local npcPosition = npcRoot.Position
+		local playerPosition = playerRoot.Position
+		npcRoot.CFrame = CFrame.lookAt(
+			npcPosition,
+			Vector3.new(playerPosition.X, npcPosition.Y, playerPosition.Z)
+		)
+	end
+
 	RemoteEvents.ExaminationApproved:FireClient(player, {
 		npcRef = npc,
 		npcName = npc:GetAttribute("DisplayName") or entry.npcType,
