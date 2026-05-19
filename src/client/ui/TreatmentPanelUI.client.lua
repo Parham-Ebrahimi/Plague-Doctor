@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RemoteEvents = require(Shared.core.RemoteEvents)
+local Humours = require(Shared.core.Humours)
 
 local localPlayer = Players.LocalPlayer
 local clientFolder = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("Client")
@@ -161,7 +162,7 @@ humoursHeader.Parent = contentFrame
 -- body-region clicking updates these (directly or via the SetHumour event).
 local humourValueLabels = {}
 
-local HUMOUR_NAMES = { "Blood", "Phlegm", "Yellow Bile", "Black Bile" }
+local HUMOUR_NAMES = Humours.Names
 local HUMOUR_EMPTY = "—"
 
 for index, humourName in HUMOUR_NAMES do
