@@ -36,6 +36,7 @@ system on top of the existing camera prototype.
   in TreatmentPanelUI
 - House-visits vs. street-examination model: tentatively committed to
   house-visits but no implementation yet
+- Whether TreatmentPanelUI's local currentTargetNPC should be replaced by reads of ExaminationState.GetCurrentNPC() after body-region click detection lands. The two are populated and cleared in lockstep today; consolidating before a second consumer exists would couple panel UI state to the public examination state contract on speculation rather than evidence.
 
 ## Locked Design Commitments
 - Four humours: Blood, Phlegm, Yellow Bile, Black Bile, range -20 to +20
