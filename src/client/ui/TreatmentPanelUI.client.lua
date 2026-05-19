@@ -3,9 +3,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local InfectionStages = require(Shared.core.InfectionStages)
-local SymptomData = require(Shared.data.SymptomData)
-local ItemData = require(Shared.data.ItemData)
 local RemoteEvents = require(Shared.core.RemoteEvents)
 
 local localPlayer = Players.LocalPlayer
@@ -13,11 +10,6 @@ local clientFolder = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("Cli
 local proximityScript = clientFolder:WaitForChild("world"):WaitForChild("ProximityDetector")
 local NPCInRange = proximityScript:WaitForChild("NPCInRange")
 local NPCOutOfRange = proximityScript:WaitForChild("NPCOutOfRange")
-
-local STAGE_LABELS = {
-	[InfectionStages.Symptomatic] = "Symptomatic",
-	[InfectionStages.Critical] = "Critical",
-}
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TreatmentInterface"
@@ -59,82 +51,185 @@ stroke.Color = Color3.fromRGB(80, 70, 50)
 stroke.Thickness = 2
 stroke.Parent = panel
 
+-- ---------------------------------------------------------------------------
+-- Panel contents
+--
+-- Layout-only structure for the four-humours examination. NPC fields are
+-- hardcoded for now; humour values start as "—" and are designed to be filled
+-- in later by body-region clicking (see humourValueLabels / the SetHumour
+-- BindableEvent below). The Leave button is pinned to the panel bottom and is
+-- the only interactive element for now.
+-- ---------------------------------------------------------------------------
+
+-- Stacked content area. Leaves ~72px at the bottom of the panel for Leave.
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "Content"
+contentFrame.Size = UDim2.new(1, 0, 1, -72)
+contentFrame.Position = UDim2.fromOffset(0, 0)
+contentFrame.BackgroundTransparency = 1
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = panel
+
+local contentPadding = Instance.new("UIPadding")
+contentPadding.PaddingLeft = UDim.new(0, 20)
+contentPadding.PaddingRight = UDim.new(0, 20)
+contentPadding.PaddingTop = UDim.new(0, 20)
+contentPadding.Parent = contentFrame
+
+local contentLayout = Instance.new("UIListLayout")
+contentLayout.FillDirection = Enum.FillDirection.Vertical
+contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+contentLayout.Padding = UDim.new(0, 8)
+contentLayout.Parent = contentFrame
+
 local nameLabel = Instance.new("TextLabel")
-nameLabel.Size = UDim2.new(1, -40, 0, 40)
-nameLabel.Position = UDim2.fromOffset(20, 20)
+nameLabel.Name = "NPCName"
+nameLabel.Size = UDim2.new(1, 0, 0, 34)
 nameLabel.BackgroundTransparency = 1
 nameLabel.TextColor3 = Color3.fromRGB(230, 215, 170)
 nameLabel.Font = Enum.Font.GothamBold
 nameLabel.TextSize = 22
 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-nameLabel.Text = ""
-nameLabel.Parent = panel
+nameLabel.Text = "Leofwine Brewstere"
+nameLabel.LayoutOrder = 1
+nameLabel.Parent = contentFrame
 
-local stageLabel = Instance.new("TextLabel")
-stageLabel.Size = UDim2.new(1, -40, 0, 24)
-stageLabel.Position = UDim2.fromOffset(20, 60)
-stageLabel.BackgroundTransparency = 1
-stageLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-stageLabel.Font = Enum.Font.Gotham
-stageLabel.TextSize = 16
-stageLabel.TextXAlignment = Enum.TextXAlignment.Left
-stageLabel.Text = ""
-stageLabel.Parent = panel
+local occupationLabel = Instance.new("TextLabel")
+occupationLabel.Name = "NPCOccupation"
+occupationLabel.Size = UDim2.new(1, 0, 0, 22)
+occupationLabel.BackgroundTransparency = 1
+occupationLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+occupationLabel.Font = Enum.Font.Gotham
+occupationLabel.TextSize = 16
+occupationLabel.TextXAlignment = Enum.TextXAlignment.Left
+occupationLabel.Text = "Occupation: Weaver"
+occupationLabel.LayoutOrder = 2
+occupationLabel.Parent = contentFrame
 
-local symptomFrame = Instance.new("Frame")
-symptomFrame.Size = UDim2.new(1, -40, 0, 90)
-symptomFrame.Position = UDim2.fromOffset(20, 100)
-symptomFrame.BackgroundTransparency = 1
-symptomFrame.Parent = panel
+local ageLabel = Instance.new("TextLabel")
+ageLabel.Name = "NPCAge"
+ageLabel.Size = UDim2.new(1, 0, 0, 22)
+ageLabel.BackgroundTransparency = 1
+ageLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+ageLabel.Font = Enum.Font.Gotham
+ageLabel.TextSize = 16
+ageLabel.TextXAlignment = Enum.TextXAlignment.Left
+ageLabel.Text = "Age: 37"
+ageLabel.LayoutOrder = 3
+ageLabel.Parent = contentFrame
 
-local symptomLayout = Instance.new("UIListLayout")
-symptomLayout.FillDirection = Enum.FillDirection.Horizontal
-symptomLayout.Padding = UDim.new(0, 8)
-symptomLayout.Parent = symptomFrame
+local descriptionLabel = Instance.new("TextLabel")
+descriptionLabel.Name = "NPCDescription"
+descriptionLabel.Size = UDim2.new(1, 0, 0, 0)
+descriptionLabel.AutomaticSize = Enum.AutomaticSize.Y
+descriptionLabel.BackgroundTransparency = 1
+descriptionLabel.TextColor3 = Color3.fromRGB(220, 220, 200)
+descriptionLabel.Font = Enum.Font.Gotham
+descriptionLabel.TextSize = 14
+descriptionLabel.TextWrapped = true
+descriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+descriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+descriptionLabel.Text =
+	"Notes: A widowed weaver who tends to her loom and her late husband's shop. "
+	.. "Has seemed more fatigued of late and complains of poor sleep and "
+	.. "wandering chills."
+descriptionLabel.LayoutOrder = 4
+descriptionLabel.Parent = contentFrame
 
-local satchelFrame = Instance.new("Frame")
-satchelFrame.Size = UDim2.new(1, -40, 0, 240)
-satchelFrame.Position = UDim2.fromOffset(20, 210)
-satchelFrame.BackgroundTransparency = 1
-satchelFrame.Parent = panel
+local divider = Instance.new("Frame")
+divider.Name = "Divider"
+divider.Size = UDim2.new(1, 0, 0, 2)
+divider.BackgroundColor3 = Color3.fromRGB(80, 70, 50)
+divider.BorderSizePixel = 0
+divider.LayoutOrder = 5
+divider.Parent = contentFrame
 
-local satchelLayout = Instance.new("UIGridLayout")
-satchelLayout.CellSize = UDim2.fromOffset(80, 80)
-satchelLayout.CellPadding = UDim2.fromOffset(8, 8)
-satchelLayout.Parent = satchelFrame
+local humoursHeader = Instance.new("TextLabel")
+humoursHeader.Name = "HumoursHeader"
+humoursHeader.Size = UDim2.new(1, 0, 0, 28)
+humoursHeader.BackgroundTransparency = 1
+humoursHeader.TextColor3 = Color3.fromRGB(230, 215, 170)
+humoursHeader.Font = Enum.Font.GothamBold
+humoursHeader.TextSize = 18
+humoursHeader.TextXAlignment = Enum.TextXAlignment.Left
+humoursHeader.Text = "The Four Humours"
+humoursHeader.LayoutOrder = 6
+humoursHeader.Parent = contentFrame
 
-local actionsFrame = Instance.new("Frame")
-actionsFrame.Size = UDim2.new(1, -40, 0, 50)
-actionsFrame.Position = UDim2.new(0, 20, 1, -80)
-actionsFrame.BackgroundTransparency = 1
-actionsFrame.Parent = panel
+-- Humour value labels, keyed by humour name. Populated below; future
+-- body-region clicking updates these (directly or via the SetHumour event).
+local humourValueLabels = {}
 
-local actionsLayout = Instance.new("UIListLayout")
-actionsLayout.FillDirection = Enum.FillDirection.Horizontal
-actionsLayout.Padding = UDim.new(0, 10)
-actionsLayout.Parent = actionsFrame
+local HUMOUR_NAMES = { "Blood", "Phlegm", "Yellow Bile", "Black Bile" }
+local HUMOUR_EMPTY = "—"
 
-local function makeButton(name, text)
-	local b = Instance.new("TextButton")
-	b.Name = name
-	b.Size = UDim2.fromOffset(120, 40)
-	b.BackgroundColor3 = Color3.fromRGB(50, 46, 36)
-	b.BorderSizePixel = 0
-	b.TextColor3 = Color3.fromRGB(220, 220, 220)
-	b.Font = Enum.Font.GothamBold
-	b.TextSize = 16
-	b.Text = text
-	b.Parent = actionsFrame
-	return b
+for index, humourName in HUMOUR_NAMES do
+	local row = Instance.new("Frame")
+	row.Name = "Humour_" .. humourName:gsub(" ", "")
+	row.Size = UDim2.new(1, 0, 0, 26)
+	row.BackgroundTransparency = 1
+	row.BorderSizePixel = 0
+	row.LayoutOrder = 6 + index
+	row.Parent = contentFrame
+
+	local rowName = Instance.new("TextLabel")
+	rowName.Name = "Name"
+	rowName.Size = UDim2.new(0.6, 0, 1, 0)
+	rowName.Position = UDim2.fromScale(0, 0)
+	rowName.BackgroundTransparency = 1
+	rowName.TextColor3 = Color3.fromRGB(220, 220, 200)
+	rowName.Font = Enum.Font.Gotham
+	rowName.TextSize = 16
+	rowName.TextXAlignment = Enum.TextXAlignment.Left
+	rowName.Text = humourName
+	rowName.Parent = row
+
+	local rowValue = Instance.new("TextLabel")
+	rowValue.Name = "Value"
+	rowValue.Size = UDim2.new(0.4, 0, 1, 0)
+	rowValue.Position = UDim2.fromScale(0.6, 0)
+	rowValue.BackgroundTransparency = 1
+	rowValue.TextColor3 = Color3.fromRGB(230, 215, 170)
+	rowValue.Font = Enum.Font.GothamBold
+	rowValue.TextSize = 16
+	rowValue.TextXAlignment = Enum.TextXAlignment.Right
+	rowValue.Text = HUMOUR_EMPTY
+	rowValue.Parent = row
+
+	humourValueLabels[humourName] = rowValue
 end
 
-local applyButton = makeButton("Apply", "Apply")
-local quarantineButton = makeButton("Quarantine", "Quarantine")
-local journalButton = makeButton("Journal", "Journal")
-local leaveButton = makeButton("Leave", "Leave")
+local function resetHumourValues()
+	for _, valueLabel in humourValueLabels do
+		valueLabel.Text = HUMOUR_EMPTY
+	end
+end
 
-local journalScript = clientFolder:WaitForChild("ui"):WaitForChild("JournalUI")
-local journalToggle = journalScript:WaitForChild("JournalToggle")
+-- Other scripts (future body-region clicking) fire this to set a humour value:
+-- SetHumour:Fire("Blood", "Sanguine") etc. An unknown humour name is ignored.
+local setHumour = Instance.new("BindableEvent")
+setHumour.Name = "SetHumour"
+setHumour.Parent = script
+
+setHumour.Event:Connect(function(humourName, value)
+	local valueLabel = humourValueLabels[humourName]
+	if valueLabel then
+		valueLabel.Text = value == nil and HUMOUR_EMPTY or tostring(value)
+	end
+end)
+
+local leaveButton = Instance.new("TextButton")
+leaveButton.Name = "Leave"
+leaveButton.Size = UDim2.fromOffset(120, 40)
+leaveButton.Position = UDim2.new(0, 20, 1, -56)
+leaveButton.BackgroundColor3 = Color3.fromRGB(50, 46, 36)
+leaveButton.BorderSizePixel = 0
+leaveButton.TextColor3 = Color3.fromRGB(220, 220, 220)
+leaveButton.Font = Enum.Font.GothamBold
+leaveButton.TextSize = 16
+leaveButton.Text = "Leave"
+leaveButton.Parent = panel
 
 local cameraControllerScript = clientFolder:WaitForChild("hud"):WaitForChild("CameraController", 10)
 -- WaitForChild is required here because CameraController creates SetGuiOpen
@@ -161,10 +256,6 @@ local function notifyExamining(active, npc)
 	end
 end
 
-journalButton.MouseButton1Click:Connect(function()
-	journalToggle:Fire()
-end)
-
 local toastLabel = Instance.new("TextLabel")
 toastLabel.Size = UDim2.fromOffset(420, 40)
 toastLabel.Position = UDim2.new(0.5, -210, 0.85, 0)
@@ -189,140 +280,11 @@ end
 
 local inRangeNPC = nil
 local currentTargetNPC = nil
-local selectedItem = nil
-local currentIsQuarantined = false
-local canUseQuarantine = false
-
-local function clearLayoutChildren(frame)
-	for _, child in frame:GetChildren() do
-		if not child:IsA("UILayout") then
-			child:Destroy()
-		end
-	end
-end
-
-local function renderSymptoms(symptoms)
-	clearLayoutChildren(symptomFrame)
-	for _, key in symptoms do
-		local def = SymptomData[key]
-		if def then
-			local box = Instance.new("Frame")
-			box.Size = UDim2.fromOffset(120, 80)
-			box.BackgroundColor3 = Color3.fromRGB(40, 36, 30)
-			box.BorderSizePixel = 0
-			box.Parent = symptomFrame
-
-			local lbl = Instance.new("TextLabel")
-			lbl.Size = UDim2.fromScale(1, 1)
-			lbl.BackgroundTransparency = 1
-			lbl.TextColor3 = Color3.fromRGB(220, 220, 200)
-			lbl.Font = Enum.Font.Gotham
-			lbl.TextSize = 14
-			lbl.TextWrapped = true
-			lbl.Text = def.label
-			lbl.Parent = box
-		end
-	end
-end
-
-local function selectItem(itemName, slotButton)
-	selectedItem = itemName
-	for _, child in satchelFrame:GetChildren() do
-		if child:IsA("TextButton") then
-			local existingStroke = child:FindFirstChildOfClass("UIStroke")
-			if existingStroke then
-				existingStroke:Destroy()
-			end
-		end
-	end
-	if slotButton then
-		local s = Instance.new("UIStroke")
-		s.Color = Color3.fromRGB(230, 215, 120)
-		s.Thickness = 2
-		s.Parent = slotButton
-	end
-end
-
-local function satchelHasItem(satchel, itemName)
-	for _, slot in satchel do
-		if slot.itemName == itemName and slot.quantity > 0 then
-			return true
-		end
-	end
-
-	return false
-end
-
-local function renderSatchel(satchel)
-	clearLayoutChildren(satchelFrame)
-	for _, slot in satchel do
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.fromOffset(80, 80)
-		btn.BackgroundColor3 = Color3.fromRGB(40, 36, 30)
-		btn.AutoButtonColor = true
-		btn.BorderSizePixel = 0
-		btn.Text = ""
-		btn.Parent = satchelFrame
-
-		if slot.itemName then
-			local item = ItemData[slot.itemName]
-			local nameLine = Instance.new("TextLabel")
-			nameLine.Size = UDim2.new(1, -8, 0.7, 0)
-			nameLine.Position = UDim2.fromOffset(4, 4)
-			nameLine.BackgroundTransparency = 1
-			nameLine.TextColor3 = Color3.fromRGB(230, 215, 170)
-			nameLine.Font = Enum.Font.Gotham
-			nameLine.TextSize = 12
-			nameLine.TextWrapped = true
-			nameLine.Text = item and item.displayName or slot.itemName
-			nameLine.Parent = btn
-
-			local qty = Instance.new("TextLabel")
-			qty.Size = UDim2.new(1, -8, 0.3, 0)
-			qty.Position = UDim2.new(0, 4, 0.7, 0)
-			qty.BackgroundTransparency = 1
-			qty.TextColor3 = Color3.fromRGB(180, 180, 180)
-			qty.Font = Enum.Font.GothamBold
-			qty.TextSize = 14
-			qty.TextXAlignment = Enum.TextXAlignment.Right
-			qty.Text = "x" .. slot.quantity
-			qty.Parent = btn
-
-			local capturedItem = slot.itemName
-			btn.MouseButton1Click:Connect(function()
-				selectItem(capturedItem, btn)
-			end)
-		end
-	end
-end
 
 local function openPanel(payload)
 	currentTargetNPC = payload.npcRef
-	selectedItem = nil
-	currentIsQuarantined = payload.quarantined == true
-	local satchel = payload.satchel or {}
-	local hasQuarantineMarker = satchelHasItem(satchel, "QuarantineMarker")
-	canUseQuarantine = currentIsQuarantined or hasQuarantineMarker
 
-	nameLabel.Text = payload.npcName or "Unknown"
-	stageLabel.Text = STAGE_LABELS[payload.stage] or ("Stage " .. tostring(payload.stage))
-	if payload.treatedByPlayer then
-		stageLabel.Text = stageLabel.Text .. "  -  treated earlier"
-	end
-	
-
-	renderSymptoms(payload.symptoms or {})
-	renderSatchel(satchel)
-
-	quarantineButton.Text = currentIsQuarantined and "Unquarantine" or "Quarantine"
-	quarantineButton.AutoButtonColor = canUseQuarantine
-	if canUseQuarantine then
-		quarantineButton.BackgroundColor3 = Color3.fromRGB(50, 46, 36)
-		quarantineButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-	else
-		quarantineButton.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-		quarantineButton.TextColor3 = Color3.fromRGB(90, 90, 90)
-	end
+	resetHumourValues()
 
 	panel.Visible = true
 	promptFrame.Visible = false
@@ -335,9 +297,6 @@ local function closePanel(notifyServer)
 
 	panel.Visible = false
 	currentTargetNPC = nil
-	selectedItem = nil
-	currentIsQuarantined = false
-	canUseQuarantine = false
 
 	notifyGuiOpen(false)
 	notifyExamining(false)
@@ -376,64 +335,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
-applyButton.MouseButton1Click:Connect(function()
-	if not selectedItem or not currentTargetNPC then
-		return
-	end
-	RemoteEvents.AttemptTreatment:FireServer(currentTargetNPC, selectedItem)
-end)
-
-quarantineButton.MouseButton1Click:Connect(function()
-	if not currentTargetNPC then
-		return
-	end
-	if not canUseQuarantine then
-		toast("No quarantine marker available.")
-		return
-	end
-
-	if currentIsQuarantined then
-		RemoteEvents.AttemptUnquarantine:FireServer(currentTargetNPC)
-	else
-		RemoteEvents.AttemptQuarantine:FireServer(currentTargetNPC)
-	end
-end)
-
 leaveButton.MouseButton1Click:Connect(function()
 	closePanel(true)
 end)
 
 RemoteEvents.ExaminationApproved.OnClientEvent:Connect(function(payload)
 	openPanel(payload)
-end)
-
-RemoteEvents.TreatmentResult.OnClientEvent:Connect(function(outcome)
-	if outcome == "success" or outcome == "failure" then
-		-- Spec: the player does not learn immediately whether the wrong remedy worked.
-		toast("Treatment administered.")
-	elseif outcome == "broad_spectrum" then
-		toast("Broad remedy applied. Slowing progression.")
-	elseif outcome == "no_item" then
-		toast("Item not in satchel.")
-	elseif outcome == "no_target" then
-		toast("Target lost.")
-	elseif outcome == "invalid_item" then
-		toast("That cannot be applied.")
-	end
-	closePanel(false)
-end)
-
-RemoteEvents.QuarantineResult.OnClientEvent:Connect(function(outcome)
-	if outcome == "success" then
-		toast("Quarantine placed.")
-	elseif outcome == "unquarantine_success" then
-		toast("Quarantine lifted.")
-	elseif outcome == "no_marker" then
-		toast("No quarantine marker available.")
-	elseif outcome == "already_quarantined" then
-		toast("Already under quarantine.")
-	elseif outcome == "not_quarantined" then
-		toast("This patient is not quarantined.")
-	end
-	closePanel(false)
 end)
