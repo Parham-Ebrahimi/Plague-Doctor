@@ -41,6 +41,10 @@ local currentCameraCFrame = camera.CFrame
 -- scriptable camera can hold instead of being overwritten every frame.
 local EXAM_DISTANCE = 5
 local EXAM_CHEST_OFFSET = 0.5
+-- Studs the camera is shifted along the NPC's RightVector during examination.
+-- This pushes the NPC toward the left side of the frame, leaving the right
+-- side empty for the examination UI panel.
+local EXAM_LATERAL_OFFSET = -3
 local EXAM_TWEEN_INFO = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local inExamination = false
@@ -450,8 +454,12 @@ end
 -- Examination camera
 -- ---------------------------------------------------------------------------
 
--- Camera 5 studs directly in front of the NPC (along its HRP LookVector), at
--- chest height, looking back at the NPC.
+-- Camera EXAM_DISTANCE studs directly in front of the NPC (along its HRP
+-- LookVector), at chest height. The camera does NOT look at the NPC's center;
+-- it looks PAST the NPC to a point offset EXAM_LATERAL_OFFSET studs along the
+-- NPC's RightVector. Aiming off-axis like this slides the NPC toward the left
+-- of the frame (the off-axis look point becomes screen-center), leaving the
+-- right side empty for the examination UI panel.
 local function computeExamCFrame(npc)
 	if not npc then
 		return nil
@@ -462,7 +470,8 @@ local function computeExamCFrame(npc)
 	end
 	local chestPos = npcRoot.Position + Vector3.new(0, EXAM_CHEST_OFFSET, 0)
 	local camPos = chestPos + npcRoot.CFrame.LookVector * EXAM_DISTANCE
-	return CFrame.lookAt(camPos, chestPos)
+	local lookAtTarget = chestPos + npcRoot.CFrame.RightVector * EXAM_LATERAL_OFFSET
+	return CFrame.lookAt(camPos, lookAtTarget)
 end
 
 -- Fade every BasePart of the local character to hidden over the camera-tween

@@ -2,12 +2,41 @@
 
 ## Current Phase
 
-Phase 1 — NPC interaction loop. Currently building the examination
-camera zoom on top of the existing interaction flow. Existing systems
-that work and must not be modified unless explicitly asked: NPC
-ProximityPrompt trigger, interaction GUI opening (TreatmentPanelUI),
-NPC freeze with timeout, NPC stage data (NPCData.lua in src/server/npc/),
-NPC stage progression, treatment handler.
+Phase 1 — NPC examination loop, four-humours system.
+
+Working systems that must not be modified unless explicitly asked:
+- The examination camera in CameraController.client.lua: smooth glide
+  to a left-of-frame held position, character fade out, smooth glide
+  back on exit, with the held-CFrame and stale-tween guard mechanisms
+  documented in TweenService Patterns below.
+- The examination panel in TreatmentPanelUI.client.lua: redesigned
+  for the four-humours system with hardcoded NPC info (name,
+  occupation, age, notes) and four humour rows (Blood, Phlegm,
+  Yellow Bile, Black Bile) initialised to em-dash placeholders.
+- The SetExamining BindableEvent wiring between CameraController and
+  TreatmentPanelUI.
+- The SetHumour BindableEvent on TreatmentPanelUI, intended for use
+  by a future body-region click detection script. Firing it with a
+  humour name and value updates the corresponding panel row.
+- The server-side NPC rotation in TreatmentHandler that turns the
+  NPC to face the player when E is pressed.
+
+In progress:
+- Server-side humour state: each NPC needs four random humour values
+  (range -20 to +20) generated at registration in NPCData.lua and
+  sent to the client when examination starts.
+- Body-region click detection (planned for src/client/world/): a
+  new script that detects clicks on the NPC's head, chest, arms,
+  and legs during examination, mapping each region to one humour,
+  and firing SetHumour to reveal the value in the panel.
+
+See docs/current-status.md for the current build state, deferred
+decisions, and locked design commitments.
+
+The original NPC interaction spec at docs/npc-interaction-spec.md
+is SUPERSEDED — it describes the old street-examination +
+symptom-tags + remedy-selection design that has been replaced by
+the four-humours model. Retained for historical reference.
 
 ## Game
 
@@ -102,7 +131,7 @@ tagged instances via `CollectionService:GetTagged(tag)` and
 ## Lua / Luau Rules
 
 - Use `task.wait`, `task.spawn`, `task.delay`. Never use `wait()`,
-  `spawn()`, or `delay()` (deprecated).
+  `spawn()`,  or `delay()` (deprecated).
 - Use `Instance.new("Class")` then set properties. Do not use the
   deprecated parent-as-second-argument form.
 - Prefer `for _, v in collection do` (generalized iteration) over `ipairs`
@@ -115,6 +144,36 @@ tagged instances via `CollectionService:GetTagged(tag)` and
   clarity.
 - Comments should explain non-obvious intent or invariants. Do not narrate
   what the code already says.
+
+## TweenService Patterns
+
+- TweenService writes the target property only while the tween is
+  playing. It does NOT hold the value after completion. If a property
+  needs to stay at the tween's target after the tween finishes, either
+  add a Completed handler that captures the final value and writes it
+  every frame (via RenderStep or similar), or arrange for another writer
+  to take over before the tween stops writing.
+
+- When transitioning ownership of a property between writers (e.g.,
+  tween A stops writing, tween B starts writing, or a held-state writer
+  hands off to a tween), there must be NO frame where neither writer is
+  active. An unowned property in Roblox will be repositioned by the
+  engine, producing a snap. Establish the new writer before stopping
+  the old one, or maintain a continuous fallback writer that bridges
+  handoffs.
+
+- Any `.Completed:Connect` on a tween must guard against Cancel-triggered
+  re-fires. Tween:Cancel() also fires Completed. Capture the active
+  tween at connection time and bail if the module-level tween reference
+  has been replaced:
+
+    local thisTween = activeTween
+    activeTween.Completed:Connect(function()
+        if activeTween ~= thisTween then
+            return
+        end
+        -- safe to act
+    end)
 
 ## Module Pattern
 

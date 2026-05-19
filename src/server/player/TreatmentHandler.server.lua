@@ -215,6 +215,7 @@ RemoteEvents.RequestExamination.OnServerEvent:Connect(function(player, npc)
 		quarantined = entry.quarantined,
 		treatedByPlayer = NPCData.WasTreatedBy(npc, player),
 		satchel = SatchelData.GetSatchel(player),
+		humours = entry.humours,
 	})
 end)
 
