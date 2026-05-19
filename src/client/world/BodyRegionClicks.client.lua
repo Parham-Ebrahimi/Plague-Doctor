@@ -74,10 +74,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 	for _ = 1, 5 do
 		local result = Workspace:Raycast(origin, direction * 1000, raycastParams)
 		if not result or not result.Instance then
-			print("[click playtest] no hit")
 			return
 		end
-		print("[click playtest] hit:", result.Instance.Name)
 
 		local mapped = Humours.BodyRegions[result.Instance.Name]
 		if mapped then
