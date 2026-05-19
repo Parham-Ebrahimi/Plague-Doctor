@@ -2,12 +2,23 @@
 
 ## Current Phase
 
-Phase 1 — NPC interaction loop. Currently building the examination
-camera zoom on top of the existing interaction flow. Existing systems
-that work and must not be modified unless explicitly asked: NPC
-ProximityPrompt trigger, interaction GUI opening (TreatmentPanelUI),
-NPC freeze with timeout, NPC stage data (NPCData.lua in src/server/npc/),
-NPC stage progression, treatment handler.
+Phase 1 — NPC examination loop. The camera zoom prototype is complete:
+press E on an NPC, custom scriptable camera smoothly glides to a held
+position framing the NPC, the player's character fades out, and the exit
+glides cleanly back. Working systems that must not be modified unless
+explicitly asked: the camera prototype in CameraController.client.lua
+(enterExamination, exitExamination, the held-CFrame mechanism, the
+stale-tween guards on Completed handlers); the SetExamining BindableEvent
+wiring in TreatmentPanelUI; the server-side NPC rotation in
+TreatmentHandler.
+
+Currently building: the four-humours examination system. Each NPC has
+four humour values (blood, phlegm, yellow bile, black bile) in the
+range -20 to +20, generated at NPC registration. The player examines
+the NPC by clicking on body regions (head, chest, arms, legs); each
+region reveals one humour value in the panel UI. The panel itself
+is being redesigned away from the original symptom-tags + inventory
+grid layout toward a humours readout.
 
 ## Game
 
@@ -116,6 +127,36 @@ tagged instances via `CollectionService:GetTagged(tag)` and
 - Comments should explain non-obvious intent or invariants. Do not narrate
   what the code already says.
 
+## TweenService Patterns
+
+- TweenService writes the target property only while the tween is
+  playing. It does NOT hold the value after completion. If a property
+  needs to stay at the tween's target after the tween finishes, either
+  add a Completed handler that captures the final value and writes it
+  every frame (via RenderStep or similar), or arrange for another writer
+  to take over before the tween stops writing.
+
+- When transitioning ownership of a property between writers (e.g.,
+  tween A stops writing, tween B starts writing, or a held-state writer
+  hands off to a tween), there must be NO frame where neither writer is
+  active. An unowned property in Roblox will be repositioned by the
+  engine, producing a snap. Establish the new writer before stopping
+  the old one, or maintain a continuous fallback writer that bridges
+  handoffs.
+
+- Any `.Completed:Connect` on a tween must guard against Cancel-triggered
+  re-fires. Tween:Cancel() also fires Completed. Capture the active
+  tween at connection time and bail if the module-level tween reference
+  has been replaced:
+
+    local thisTween = activeTween
+    activeTween.Completed:Connect(function()
+        if activeTween ~= thisTween then
+            return
+        end
+        -- safe to act
+    end)
+    
 ## Module Pattern
 
 Every ModuleScript follows this shape:
