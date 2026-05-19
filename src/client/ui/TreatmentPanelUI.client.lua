@@ -11,6 +11,8 @@ local clientFolder = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("Cli
 local proximityScript = clientFolder:WaitForChild("world"):WaitForChild("ProximityDetector")
 local NPCInRange = proximityScript:WaitForChild("NPCInRange")
 local NPCOutOfRange = proximityScript:WaitForChild("NPCOutOfRange")
+local examinationStateScript = clientFolder:WaitForChild("world"):WaitForChild("ExaminationState")
+local ExaminationState = require(examinationStateScript)
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TreatmentInterface"
@@ -290,6 +292,8 @@ local function openPanel(payload)
 	panel.Visible = true
 	promptFrame.Visible = false
 	notifyGuiOpen(true)
+	ExaminationState.SetCurrentNPC(payload.npcRef, payload.humours)
+	print("[B playtest open]", ExaminationState.GetCurrentNPC(), game:GetService("HttpService"):JSONEncode(ExaminationState.GetAllHumours()))
 	notifyExamining(true, currentTargetNPC)
 end
 
@@ -298,6 +302,8 @@ local function closePanel(notifyServer)
 
 	panel.Visible = false
 	currentTargetNPC = nil
+	ExaminationState.ClearCurrentNPC()
+	print("[B playtest close]", ExaminationState.GetCurrentNPC(), ExaminationState.GetAllHumours())
 
 	notifyGuiOpen(false)
 	notifyExamining(false)
