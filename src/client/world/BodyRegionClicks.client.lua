@@ -76,7 +76,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		if not result or not result.Instance then
 			return
 		end
-
 		local mapped = Humours.BodyRegions[result.Instance.Name]
 		if mapped then
 			humourName = mapped
@@ -87,7 +86,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		-- re-hitting it. 0.05 studs is large enough to clear
 		-- floating-point noise on the hit position, small enough
 		-- to be invisible to gameplay.
-		origin = result.Position + direction.Unit * 0.05
+		origin = result.Position + direction.Unit * 0.5
 	end
 
 	if not humourName then
