@@ -106,6 +106,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		-- opens. Warn rather than silently no-op so a missing
 		-- payload key is loud during development.
 		warn("[BodyRegionClicks] No humour value for", humourName, "on current NPC")
+		print("[diag]", humourName, value)
 		return
 	end
 
