@@ -1,42 +1,17 @@
 # Plague Doctor — Project Rules
 
-## Current Phase
+## Current State
 
-Phase 1 — NPC examination loop, four-humours system.
-
-Working systems that must not be modified unless explicitly asked:
-- The examination camera in CameraController.client.lua: smooth glide
-  to a left-of-frame held position, character fade out, smooth glide
-  back on exit, with the held-CFrame and stale-tween guard mechanisms
-  documented in TweenService Patterns below.
-- The examination panel in TreatmentPanelUI.client.lua: redesigned
-  for the four-humours system with hardcoded NPC info (name,
-  occupation, age, notes) and four humour rows (Blood, Phlegm,
-  Yellow Bile, Black Bile) initialised to em-dash placeholders.
-- The SetExamining BindableEvent wiring between CameraController and
-  TreatmentPanelUI.
-- The SetHumour BindableEvent on TreatmentPanelUI, intended for use
-  by a future body-region click detection script. Firing it with a
-  humour name and value updates the corresponding panel row.
-- The server-side NPC rotation in TreatmentHandler that turns the
-  NPC to face the player when E is pressed.
-
-In progress:
-- Server-side humour state: each NPC needs four random humour values
-  (range -20 to +20) generated at registration in NPCData.lua and
-  sent to the client when examination starts.
-- Body-region click detection (planned for src/client/world/): a
-  new script that detects clicks on the NPC's head, chest, arms,
-  and legs during examination, mapping each region to one humour,
-  and firing SetHumour to reveal the value in the panel.
-
-See docs/current-status.md for the current build state, deferred
-decisions, and locked design commitments.
+See `docs/current-status.md` for the current build state, shipped
+systems, in-progress work, and deferred decisions. This file
+(CLAUDE.md) holds timeless project conventions only; anything
+time-sensitive lives in current-status.md.
 
 The original NPC interaction spec at docs/npc-interaction-spec.md
 is SUPERSEDED — it describes the old street-examination +
 symptom-tags + remedy-selection design that has been replaced by
-the four-humours model. Retained for historical reference.
+the four-humours + symptom-discovery model. Retained for
+historical reference.
 
 ## Game
 
@@ -222,16 +197,71 @@ state.
 - After making changes, summarize what was changed in 2-3 sentences and
   identify any edge cases or follow-ups the user should be aware of.
 
+## Working with Claude Code
+
+This project uses Claude Code in Cursor to make edits. The following
+patterns are mandatory unless I explicitly say otherwise.
+
+- **Diagnostic-then-edit.** For any non-trivial change, the first
+  prompt is a read-only diagnostic that maps the current shape of
+  the code: every relevant call site, every consumer, every name
+  collision, every existing convention. Quote findings verbatim
+  with surrounding context — do not summarize. Only after I've
+  reviewed the diagnostic do I send an edit prompt.
+- **Re-read from disk before every edit.** Claude Code's file
+  cache can be stale relative to what's actually on disk. The
+  first action in any edit prompt is to re-read the target file
+  fresh. Use grep against the filesystem as ground truth.
+- **Confirm branch before editing.** Run `git branch --show-current`
+  before any edit and confirm it matches the branch this change
+  belongs to. (Lost an edit to main once because this step was
+  skipped.)
+- **Push back when you disagree.** If a proposed name, placement,
+  or approach looks worse than an alternative given what you can
+  see in the code, surface it before making the edit. I'd rather
+  hear an objection than discover the issue in a diff.
+- **Do not commit or stage from inside an edit prompt** unless I
+  explicitly ask. I want to inspect with `git status` and
+  `git diff` before staging, and stage before committing.
+- **Match local conventions** (logging prefixes, naming, file
+  organization) unless the convention itself is wrong. If you
+  think it's wrong, say so rather than silently breaking it.
+
 ## Git Workflow
 
-- The user uses git for version control. The repo is at
-  https://github.com/Parham-Ebrahimi/Plague-Doctor.
-- The user prefers to make their own commits rather than have them
-  generated automatically.
-- When changes are made, briefly suggest what the next commit message
-  could be, but do not run git commands unless explicitly asked.
-- Never run `git reset --hard`, `git push --force`, `git rebase`, or
-  `git clean` without explicit confirmation, even if asked.
+- Repo: https://github.com/Parham-Ebrahimi/Plague-Doctor.
+- **Small focused branches.** One logical change per branch, opened
+  as a PR and merged into main. Not long-lived feature branches
+  with many commits. If a change starts growing, split it.
+- **Conventional commit messages.** Format: `<type>: <description>`.
+  Types: `feat:` (new capability or wire-protocol change), `fix:`
+  (bug fix), `refactor:` (no behavior change), `docs:`
+  (documentation only), `chore:` (tooling, scaffolding, throwaway
+  debug code).
+- **Eyeball-check sequence between every git step:**
+    git status → git add → git status → git diff --cached → git commit
+  This catches surprises (wrong branch, wrong files staged,
+  whitespace damage) before they land.
+- **Playtest before pushing.** Every commit is playtested before
+  it moves to origin. Even one-line changes — small diffs hide
+  the most embarrassing breakage.
+- **Confirm clean main before branching.** `git checkout main &&
+  git pull && git status` before creating a new branch. A branch
+  off stale or dirty main produces conflicts later.
+- I prefer to run git commands myself rather than have them
+  generated automatically. Suggest the next command when relevant,
+  but do not execute unless I ask.
+- Never run `git reset --hard`, `git push --force`, `git rebase`,
+  or `git clean` without explicit confirmation, even if asked.
+
+## Build Strategy
+
+Horizontal slicing. Build crude versions of every step in the
+day-one loop before deepening any single system. The goal at this
+stage is a playable end-to-end loop, not a polished implementation
+of any one mechanic in isolation. When in doubt between "make this
+one system better" and "make the next system exist at all,"
+choose the second.
 
 ## When Asked to Write Code
 
