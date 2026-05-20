@@ -1,265 +1,331 @@
-# Plague Doctor — Symptom Vocabulary (Draft v1)
+# Plague Doctor — Symptom Vocabulary (Draft v3)
 
-This document captures the draft set of symptoms used in the
-examination redesign. Each symptom has:
+This document captures the symptom set used in the examination
+redesign. Each symptom has:
 
 - A key (used internally and in code)
 - A display name (shown to the player)
 - A short description (the doctor's-notes-style flavour text)
-- A body region (where the player discovers it on click; or "passive"
-  for free-on-open)
-- An associated humour
-- A contribution value (signed integer; added to the player's
-  running humour estimate when discovered)
-- A trigger threshold (the humour value above or below which this
-  symptom is present on the patient)
+- A body region (where the player discovers it on click; or
+  "passive" for free-on-open)
+- An associated humour and direction (excess or deficiency)
+- A contribution value (signed integer; the player reads this
+  from the journal's symptom-reference page and uses it to
+  calculate humour positions on the graph)
+- A trigger threshold (the humour value above or below which
+  this symptom is present on the patient)
+- A discovery type: "click" for simple click discovery, or
+  "skill_check" for a brief mini-interaction
 
-This is a first-pass draft. Numbers will be tuned during playtest;
-some symptoms may be cut or added; severity/intensity variations are
-deferred (see deferred decisions in current-status.md).
+The player-facing model is manual: the player observes symptoms
+through clicks and skill checks, looks up each symptom's
+contribution value in the journal, calculates the humour sums
+mentally (or on paper), and drags the humour medallions on the
+bipolar graph to the correct integer positions. The graph does
+not auto-update. See current-status.md for the locked design
+commitments.
 
-Internally, the humour range is -20 to +20. Thresholds and
-contributions are chosen so that finding every symptom for a given
-humour yields the patient's true humour value for that humour.
+This is a v3 draft. Numbers, descriptions, region placements,
+and skill-check designs will all be tuned during playtest.
+Tonal direction is medieval-medical-but-not-gory: visible skin
+signs, audible cough and pulse, observable behaviour, tactile
+temperature, respectful palpation. No discharge, no genital
+examination, no content unsuitable for Roblox players.
+
+## How the math works
+
+The internal humour range is -20 to +20. Each humour has 4
+symptoms total: 2 for excess (positive direction) and 2 for
+deficiency (negative direction). Symptoms are arranged so the
+sum of contributions for symptoms present at a given humour
+value approximates that value within a bounded quantisation
+error.
+
+Threshold/contribution pairs in each direction:
+
+- 1st symptom: threshold ±5, contribution ±8
+- 2nd symptom: threshold ±15, contribution ±12
+
+For a humour at +12, the player would find both symptoms? No —
+only the first symptom (threshold +5 crossed, but threshold +15
+not crossed). The player calculates +8 and places the medallion
+at +8. The true value is +12. The player's estimate is short by
+4.
+
+For a humour at +18, both symptoms are present. The player
+calculates +8 + +12 = +20 and places the medallion at +20. The
+true value is +18. The player's estimate is over by 2.
+
+The player's estimate is at most ±7 from the true value after
+full examination. This bounded error is what the treatment
+system's tolerance accommodates (see current-status.md).
+
+The player does this math themselves using the journal's
+symptom-reference page (page 2 of the journal). The graph does
+not show the calculation; the player commits their answer by
+dragging the medallion to the integer position they computed.
+
+## Day-one scope note
+
+For the day-one horizontal slice, simplifications are made to
+keep scope manageable:
+
+- All symptoms are discovered through simple clicks. The three
+  skill-check symptoms (bounding_pulse, tender_side,
+  swollen_bubo) are still marked with discovery_type =
+  "skill_check" in the data, but the day-one implementation
+  treats them as simple clicks. Skill-check minigames are
+  built in a later iteration.
+- No camera zoom on body region click. The player clicks a
+  body region; the symptoms in that region appear in the
+  observed-symptoms list as text. Visual indicators on body
+  parts are deferred.
+- No art for symptom visuals on the NPC. Symptoms are
+  text-only in the observed-symptoms list.
+
+The full design (skill-check minigames, body-region zoom, visual
+indicators) is the eventual target, layered in after the
+horizontal slice is playable end-to-end.
 
 ---
 
 ## Blood (sanguine — hot and wet)
 
-Excess (positive Blood) symptoms:
+### Excess (positive Blood)
 
-- **fever** — *"Patient's skin is hot to the touch, flushed across
-  the face and chest."*
-  Region: head. Threshold: Blood > +5. Contribution: +8.
+- **fever** — *"Patient's forehead and cheeks feel hot. The face
+  looks flushed and ruddy."*
+  Region: head. Discovery: skill_check (day-one: click).
+  Threshold: Blood > +5. Contribution: +8.
 
-- **rapid_pulse** — *"Pulse is fast and strong; can be felt without
-  pressing hard."*
-  Region: chest. Threshold: Blood > +8. Contribution: +5.
+- **bounding_pulse** — *"Pulse is fast and strong, easy to find
+  and slightly forceful against the fingertips."*
+  Region: chest (taken at the wrist or neck during chest
+  examination). Discovery: skill_check (day-one: click).
+  Threshold: Blood > +15. Contribution: +12.
 
-- **florid_complexion** — *"Cheeks and nose are bright red; the
-  whole face looks ruddy."*
-  Region: passive. Threshold: Blood > +12. Contribution: +4.
+### Deficiency (negative Blood)
 
-- **bloody_cough** — *"Patient coughs and there are streaks of red
-  in what comes up."*
-  Region: chest. Threshold: Blood > +15. Contribution: +3.
+- **pallor** — *"Lips, gums, and the insides of the eyelids look
+  pale and bloodless."*
+  Region: head. Discovery: click. Threshold: Blood < -5.
+  Contribution: -8.
 
-Deficiency (negative Blood) symptoms:
-
-- **pallor_lips** — *"Lips and gums look pale; almost bloodless."*
-  Region: head. Threshold: Blood < -5. Contribution: -8.
-
-- **weak_pulse** — *"Pulse is faint and slow; have to press to find
-  it."*
-  Region: chest. Threshold: Blood < -8. Contribution: -5.
-
-- **cold_extremities** — *"Hands and feet are noticeably cold to
-  the touch, even in a warm room."*
-  Region: arms (and legs, but primarily attributed to arms for the
-  mapping). Threshold: Blood < -12. Contribution: -4.
-
-- **faintness** — *"Patient sways when standing; complains of
-  dizziness when they sit up."*
-  Region: passive. Threshold: Blood < -15. Contribution: -3.
+- **cold_extremities** — *"The hands and fingertips are
+  noticeably cold even in a warm room."*
+  Region: arms. Discovery: click. Threshold: Blood < -15.
+  Contribution: -12.
 
 ---
 
 ## Phlegm (phlegmatic — cold and wet)
 
-Excess (positive Phlegm) symptoms:
+### Excess (positive Phlegm)
 
-- **productive_cough** — *"Persistent wet cough; patient brings up
-  thick white or pale-yellow phlegm."*
-  Region: chest. Threshold: Phlegm > +5. Contribution: +8.
+- **wet_cough** — *"Patient coughs periodically; the cough sounds
+  wet and productive."*
+  Region: chest. Discovery: click. Threshold: Phlegm > +5.
+  Contribution: +8.
 
-- **swollen_legs** — *"Legs are visibly swollen, especially at
-  the ankles; skin holds an indent when pressed."*
-  Region: legs. Threshold: Phlegm > +8. Contribution: +5.
+- **swollen_ankles** — *"The ankles are visibly swollen. Pressing
+  the skin briefly leaves an indent."*
+  Region: legs. Discovery: click. Threshold: Phlegm > +15.
+  Contribution: +12.
 
-- **clammy_skin** — *"Skin is cold and damp to the touch, with a
-  sticky film of sweat."*
-  Region: arms. Threshold: Phlegm > +12. Contribution: +4.
+### Deficiency (negative Phlegm)
 
-- **heavy_breathing** — *"Breathing is laboured and noisy; chest
-  rises slowly."*
-  Region: chest. Threshold: Phlegm > +15. Contribution: +3.
-
-Deficiency (negative Phlegm) symptoms:
-
-- **dry_mouth** — *"Lips are cracked; tongue is parched. Patient
+- **dry_lips** — *"The lips are cracked and dry. The patient
   asks for water."*
-  Region: head. Threshold: Phlegm < -5. Contribution: -8.
+  Region: head. Discovery: click. Threshold: Phlegm < -5.
+  Contribution: -8.
 
-- **dry_cough** — *"Persistent harsh dry cough; nothing comes up."*
-  Region: chest. Threshold: Phlegm < -8. Contribution: -5.
-
-- **flaky_skin** — *"Patches of dry, flaking skin, especially on
-  the forearms and shins."*
-  Region: arms. Threshold: Phlegm < -12. Contribution: -4.
-
-- **sunken_eyes** — *"Eyes look hollow and sunken; skin around them
-  is drawn tight."*
-  Region: head. Threshold: Phlegm < -15. Contribution: -3.
+- **flaky_skin** — *"Patches of dry, flaking skin on the
+  forearms."*
+  Region: arms. Discovery: click. Threshold: Phlegm < -15.
+  Contribution: -12.
 
 ---
 
 ## Yellow Bile (choleric — hot and dry)
 
-Excess (positive Yellow Bile) symptoms:
+### Excess (positive Yellow Bile)
 
-- **jaundice** — *"Skin and the whites of the eyes have a yellow
-  cast."*
-  Region: passive. Threshold: Yellow Bile > +5. Contribution: +8.
+- **jaundice** — *"The whites of the eyes have a yellow cast."*
+  Region: head. Discovery: click. Threshold: Yellow Bile > +5.
+  Contribution: +8.
 
-- **bitter_mouth** — *"Patient complains of a constant bitter
-  taste; breath is sharp and sour."*
-  Region: head. Threshold: Yellow Bile > +8. Contribution: +5.
+- **tender_side** — *"The area below the ribs on the right side
+  is tender to gentle pressure."*
+  Region: chest. Discovery: skill_check (day-one: click).
+  Threshold: Yellow Bile > +15. Contribution: +12.
 
-- **bilious_vomit** — *"Patient has vomited a thin yellow-green
-  fluid earlier today, according to their household."*
-  Region: passive. Threshold: Yellow Bile > +12. Contribution: +4.
+### Deficiency (negative Yellow Bile)
 
-- **right_side_pain** — *"Patient flinches when the right side
-  below the ribs is pressed."*
-  Region: chest. Threshold: Yellow Bile > +15. Contribution: +3.
+- **sallow_skin** — *"The patient's skin has a dull, drained
+  tone — not pale, but lifeless."*
+  Region: head. Discovery: click. Threshold: Yellow Bile < -5.
+  Contribution: -8.
 
-Deficiency (negative Yellow Bile) symptoms:
-
-- **bland_appetite** — *"Patient says food tastes of nothing; no
-  hunger, no aversion either."*
-  Region: passive. Threshold: Yellow Bile < -5. Contribution: -8.
-
-- **sluggish_digestion** — *"Patient complains of heaviness after
-  meals that does not resolve."*
-  Region: passive. Threshold: Yellow Bile < -8. Contribution: -5.
-
-- **pale_stool** — *"Household reports stool has been unusually
-  pale, almost clay-coloured."*
-  Region: passive. Threshold: Yellow Bile < -12. Contribution: -4.
-
-- **listless** — *"Patient is unusually quiet and slow to respond
-  to questions, without distress."*
-  Region: passive. Threshold: Yellow Bile < -15. Contribution: -3.
+- **weak_grip** — *"When asked to grip the doctor's hand, the
+  patient's grip is noticeably weak."*
+  Region: arms. Discovery: click. Threshold: Yellow Bile < -15.
+  Contribution: -12.
 
 ---
 
 ## Black Bile (melancholic — cold and dry)
 
-Excess (positive Black Bile) symptoms:
+### Excess (positive Black Bile)
 
-- **dark_complexion** — *"Skin has a darkened, sallow cast,
-  especially around the eyes."*
-  Region: passive. Threshold: Black Bile > +5. Contribution: +8.
+- **dark_undereyes** — *"The skin beneath the patient's eyes is
+  darkened and hollow."*
+  Region: head. Discovery: click. Threshold: Black Bile > +5.
+  Contribution: +8.
 
-- **melancholy** — *"Patient is withdrawn; speaks little, voice
-  flat. Avoids eye contact."*
-  Region: passive. Threshold: Black Bile > +8. Contribution: +5.
+- **swollen_bubo** — *"A hard, tender swelling has formed beneath
+  the jaw, characteristic of plague."*
+  Region: head (jaw/neck). Discovery: skill_check (day-one:
+  click). Threshold: Black Bile > +15. Contribution: +12.
 
-- **dark_stool** — *"Household reports stool has been unusually
-  dark, almost black and tarry."*
-  Region: passive. Threshold: Black Bile > +12. Contribution: +4.
+### Deficiency (negative Black Bile)
 
-- **swollen_buboes** — *"Visible swellings under the jaw or in the
-  armpit; tender, hard to the touch."*
-  Region: head (jaw) or arms (armpits) — for the simple mapping,
-  attribute to head. Threshold: Black Bile > +15. Contribution: +3.
+- **restless_movement** — *"The patient cannot sit still. Their
+  legs and feet shift constantly."*
+  Region: legs. Discovery: click. Threshold: Black Bile < -5.
+  Contribution: -8.
 
-Deficiency (negative Black Bile) symptoms:
-
-- **flushed_cheeks** — *"Unusual brightness in the face; almost
-  feverish-looking but skin is not hot."*
-  Region: passive. Threshold: Black Bile < -5. Contribution: -8.
-
-- **excessive_cheer** — *"Patient seems unusually upbeat and
-  talkative given their condition; laughs at small things."*
-  Region: passive. Threshold: Black Bile < -8. Contribution: -5.
-
-- **restless_legs** — *"Patient cannot keep still; legs twitch or
-  shift constantly while seated."*
-  Region: legs. Threshold: Black Bile < -12. Contribution: -4.
-
-- **flighty** — *"Difficulty holding a thought; changes the subject
-  mid-sentence."*
-  Region: passive. Threshold: Black Bile < -15. Contribution: -3.
+- **scattered_attention** — *"The patient cannot hold a thought.
+  Their eyes dart; they change topic mid-sentence."*
+  Region: passive (visible immediately on examination start).
+  Discovery: click. Threshold: Black Bile < -15. Contribution:
+  -12.
 
 ---
 
-## Notes for tuning
+## Body region distribution
 
-- Each humour has 8 symptoms (4 excess, 4 deficiency). Within each
-  direction, the contributions sum to: 8 + 5 + 4 + 3 = 20. This
-  matches the humour range, so finding all four symptoms in a
-  direction precisely reconstructs the humour value at +20 or -20.
+- **head**: 7 symptoms (fever, pallor, dry_lips, jaundice,
+  sallow_skin, dark_undereyes, swollen_bubo)
+- **chest**: 3 symptoms (bounding_pulse, wet_cough, tender_side)
+- **arms**: 3 symptoms (cold_extremities, flaky_skin, weak_grip)
+- **legs**: 2 symptoms (swollen_ankles, restless_movement)
+- **passive**: 1 symptom (scattered_attention)
 
-- For a humour at +12, the symptoms present are the +5, +8, and +12
-  threshold symptoms (contributions: 8 + 5 + 4 = 17), so the player
-  would observe their graph land at +17. But the true value is +12.
-  This is a *bug in the current draft* — the contributions don't
-  sum correctly to mid-range values. Tuning needed.
+Head is the most information-dense region because the face is
+where most diagnostic signs traditionally read in medieval
+medicine. This is a deliberate accept-the-asymmetry choice
+rather than a balanced distribution. If playtest shows head
+clicks feel overloaded relative to other regions, some symptoms
+(jaundice moved to neck/chest; sallow_skin moved to forearms)
+can be redistributed without changing the core design.
 
-  **The fix:** thresholds and contributions need to be redesigned so
-  the sum of contributions for symptoms present at humour value V
-  equals V. One simple approach: each humour has N symptoms with
-  equal contribution +20/N each, present at thresholds spaced evenly
-  through 0 to +20. With N=4, each symptom contributes +5 and is
-  present at +5, +10, +15, +20 thresholds. A humour at +12 has 2
-  symptoms present (contributions 5+5=10), so the graph reads +10.
-  Close but not exact — there's a quantisation error of up to one
-  symptom's contribution (±5).
+---
 
-  **Alternative fix:** symptom contributions are *not* fixed integers
-  but computed from the humour value at observation time (the
-  "intensity" model from current-status.md's deferred decisions).
-  This gives precise reconstruction but requires implementing
-  per-symptom intensity.
+## Tonal calibration
 
-  **Pragmatic choice for first implementation:** use the equal-
-  contribution / quantised version. The player's estimate is within
-  ±5 of the true value, which gives treatment a built-in tolerance.
-  Perfect precision isn't necessary if the treatment system also
-  tolerates approximation.
+Descriptions are written in clinical-medieval voice but avoid
+the more visceral edges of period medicine. Symptoms involving
+discharge (urine, stool, vomit, blood expelled from the body),
+genital examination, or anything sexual are excluded. Bodily
+content stays within: skin (visible appearance, temperature,
+texture), audible signs (cough, breathing, pulse), behavioural
+observations (movement, attention, speech), and respectful
+palpation (pressing visible areas through clothing or on bare
+arms).
 
-- Body region distribution across humours is uneven in this draft.
-  "passive" symptoms cluster heavily in Yellow Bile and Black Bile
-  (because those humours' historical associations are
-  systemic/behavioural rather than anatomical). This is okay — it
-  means examination of those humours leans on observation and
-  patient notes rather than touch. But verify it produces playable
-  variety; if Black Bile feels too easy because everything is
-  passive, redistribute.
+This keeps the tone medical-serious without being gross or
+inappropriate for Roblox's player base.
 
-- Symptoms with the same region but different humours create
-  *informative clicks*: clicking the chest reveals which of
-  rapid_pulse, weak_pulse, productive_cough, dry_cough,
-  bloody_cough, heavy_breathing, right_side_pain are present, and
-  the *combination* tells the player about all four humours at
-  once from a single region. That's good — body region clicks are
-  multi-humour information sources, not one-region-per-humour.
+---
 
-- The Black Bile symptoms include "melancholy," "excessive cheer,"
-  and "flighty" — behavioural / mental symptoms. These work in a
-  prototype but will need NPC behaviour or dialogue support to
-  display visibly. For now they can be revealed via the symptom
-  text alone (the doctor's observation, stated in the patient
-  notes or the symptom log). NPC animation for these is deferred.
+## Patient notes as examination hints
 
-## Open questions to resolve before implementation
+The patient examination panel includes a notes section in the
+journal. These notes are narratively framed as the doctor's case
+notes and information reported by the patient and their
+household.
 
-- The threshold/contribution math doesn't reconstruct values
-  precisely (see Notes for tuning). Pick one of the three
-  approaches above before coding.
-- "Swollen buboes" is plague-specific and visually distinctive. It
-  may want to be a *special* symptom that overrides the simple
-  threshold model — e.g. only certain disease types produce buboes
-  even at high Black Bile. Deferred unless multiple disease types
-  enter the game.
-- Several symptoms reference "the household" or "the wife reports"
-  — this implies an information source beyond the patient
-  themselves. Decide whether that's flavour text only or implies a
-  dialogue/NPC-network mechanic.
-- The colour-coding seen in the mockup (red for severe symptoms,
-  others muted) needs a rule: severity by symptom (this symptom is
-  always serious) or by occurrence (this patient's instance of the
-  symptom is severe). Recommend per-symptom for simplicity, with
-  the four highest-contribution symptoms per humour being "severe"
-  red, and the others muted.
+Notes are **always true** in the current design — they reliably
+indicate where symptoms can be found. Examples:
+- "Complains of fever, chest pain, chills, and swelling on the
+  arms" → fever (head), some chest symptom, cold_extremities
+  (arms), and one of swollen_ankles or flaky_skin (arms).
+- "Sleeps poorly. Wife reports worsening cough since dawn." →
+  wet_cough (chest), possibly some Phlegm or Blood imbalance.
+
+The notes don't reveal *which specific* symptom is present, only
+its general region or category. The player still has to examine
+to confirm. But the notes reduce time wasted on body regions the
+patient doesn't present any symptoms in.
+
+This is the design for first implementation. Unreliable notes
+(patient under-reports or self-reports incorrectly) are deferred
+as a possible difficulty layer.
+
+---
+
+## Player flow (full design — implemented incrementally)
+
+When the player presses E to examine an NPC:
+
+1. The examination camera glides to the NPC (already
+   implemented). The journal panel opens.
+2. The journal is on the NPC's page: name, occupation, age,
+   notes, empty bipolar humour graph (all four medallions at 0).
+3. Passive symptoms (scattered_attention) appear in the
+   observed-symptoms list immediately if present.
+4. The player clicks a body region. In the full design, the
+   camera zooms further into that region and visual indicators
+   on the body part show present symptoms. In the day-one
+   slice, the player just clicks the region and text symptoms
+   appear in the observed-symptoms list.
+5. The player flips to the symptom-reference page (page 2 of
+   the journal) to look up the humour and contribution value
+   for each observed symptom.
+6. The player flips back to the patient page and drags the
+   appropriate humour medallion to the integer position
+   matching the sum of contributions for that humour. The
+   medallion snaps to integer positions when the player
+   releases left-click.
+7. The player can repeat: examine other regions, look up
+   contributions, drag medallions.
+8. When the player exits examination, the journal retains the
+   patient's page and current graph state.
+9. If the player returns to the patient later (after brewing a
+   potion, etc.), the journal page shows the graph as the
+   player last placed it.
+
+The full design adds skill-check minigames at step 4 for three
+specific symptoms. The day-one slice omits this.
+
+---
+
+## Open questions to resolve before full implementation
+
+These are not blockers for the day-one slice but should be
+resolved before the deeper version ships:
+
+- **Skill-check minigame style.** Recommend slider-based
+  pressure control for thematic fit and implementation
+  simplicity, but Stardew-fishing-bar and osu-circle-tap are
+  also candidates.
+- **Skill-check failure handling.** Recommend: one retry
+  allowed, then symptom locked for the current examination.
+  Reset on Leave.
+- **Visual indicator art style.** Photorealistic, stylised, or
+  abstract. Reference mockup leans semi-realistic. Decide before
+  building the zoom interaction's visual layer.
+- **Whether the patient notes should be hand-authored per-NPC
+  or generated from the symptom set.** First implementation:
+  hand-authored hardcoded notes per-NPC type, with generation
+  as a later enhancement.
+- **Camera zoom transition timing and easing.** Should match
+  the existing examination camera's TweenService style (Quad-
+  Out 0.6s) or use different parameters. Test in prototype.
+- **Re-examination of a region after a skill-check failure.**
+  Recommend: persistent within the current examination, reset
+  on Leave.
+- **Notepad / scratchpad for player math.** Whether to add a
+  small text-input notepad area in the journal so the player
+  can write down values as they look them up. Deferred until
+  playtest shows whether players need it.
