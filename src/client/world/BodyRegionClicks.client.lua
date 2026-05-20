@@ -11,27 +11,22 @@ local clientFolder = localPlayer:WaitForChild("PlayerScripts"):WaitForChild("Cli
 
 local examinationStateScript = clientFolder:WaitForChild("world"):WaitForChild("ExaminationState")
 local ExaminationState = require(examinationStateScript)
-local currentNPCChanged = examinationStateScript:WaitForChild("CurrentNPCChanged")
-
-local treatmentPanelScript = clientFolder:WaitForChild("ui"):WaitForChild("TreatmentPanelUI")
-local setHumour = treatmentPanelScript:WaitForChild("SetHumour")
 
 local camera = Workspace.CurrentCamera
 
--- Tracks which humours have already been revealed for the
--- currently-examined NPC. Keyed by humour display-name. Reset
--- whenever the examined NPC reference changes (including
--- transitions to nil), so re-examining the same NPC after
--- Leave starts fresh — consistent with the panel's
--- resetHumourValues() on every open.
-local revealedHumours = {}
-
-currentNPCChanged.Event:Connect(function()
-	-- Reset on every transition (start of new examination
-	-- or end of current one). Both same-NPC re-examination
-	-- and different-NPC examination correctly start fresh.
-	revealedHumours = {}
-end)
+-- Fan-out event for region clicks during examination. Fires
+-- with a region string (one of Humours.Regions.* values:
+-- "head", "chest", "arms", or "legs") on every successful
+-- raycast that resolves to a mapped R15 part. Does NOT
+-- dedupe — subscribers handle their own dedupe at whatever
+-- granularity makes sense (e.g. HumourReveal dedupes by
+-- humour; the future symptom-discovery subscriber will
+-- dedupe by symptom key). Carries only the region string;
+-- subscribers consult ExaminationState directly for any
+-- per-NPC state they need.
+local clickedRegion = Instance.new("BindableEvent")
+clickedRegion.Name = "ClickedRegion"
+clickedRegion.Parent = script
 
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 	if gameProcessedEvent then
@@ -69,16 +64,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 	-- unmapped parts between the camera and the body surface.
 	local origin = unitRay.Origin
 	local direction = unitRay.Direction
-	local humourName = nil
+	local regionName = nil
 
 	for _ = 1, 5 do
 		local result = Workspace:Raycast(origin, direction * 1000, raycastParams)
 		if not result or not result.Instance then
 			return
 		end
-		local mapped = Humours.BodyRegions[result.Instance.Name]
+		local mapped = Humours.RegionByPart[result.Instance.Name]
 		if mapped then
-			humourName = mapped
+			regionName = mapped
 			break
 		end
 
@@ -89,26 +84,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 		origin = result.Position + direction.Unit * 0.5
 	end
 
-	if not humourName then
+	if not regionName then
 		return
 	end
 
-	if revealedHumours[humourName] then
-		-- First-click-only: the humour for this region has
-		-- already been revealed for this examination. Stay
-		-- visible, do nothing.
-		return
-	end
-
-	local value = ExaminationState.GetHumour(humourName)
-	if value == nil then
-		-- Shouldn't happen — humours are set when the panel
-		-- opens. Warn rather than silently no-op so a missing
-		-- payload key is loud during development.
-		warn("[BodyRegionClicks] No humour value for", humourName, "on current NPC")
-		return
-	end
-
-	revealedHumours[humourName] = true
-	setHumour:Fire(humourName, value)
+	clickedRegion:Fire(regionName)
 end)
