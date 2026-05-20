@@ -5,6 +5,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local InfectionStages = require(Shared.core.InfectionStages)
 local Humours = require(Shared.core.Humours)
 local GameConstants = require(Shared.core.GameConstants)
+local SymptomData = require(Shared.data.SymptomData)
 
 local NPCData = {}
 
@@ -115,6 +116,51 @@ end
 function NPCData.GetSymptoms(npc)
 	local e = entries[npc]
 	return e and e.symptoms or {}
+end
+
+-- Returns a list of symptom keys present on this NPC, derived from
+-- the NPC's hidden humour values. Pure derivation — does not mutate
+-- entry state, does not read entry.symptoms. Iterates new-schema
+-- SymptomData entries; legacy entries (cough, laboured_breathing,
+-- etc.) are skipped because they lack the humour and threshold
+-- fields. See docs/symptom-vocabulary.md for the symptom-discovery
+-- design.
+--
+-- Does not gate on NPC stage. rollHumours runs on every NPC at
+-- Register, including Healthy ones, so calling ComputeSymptoms on
+-- a Healthy NPC will return symptoms based on their random humour
+-- values. The current call path (examination) already gates on
+-- Symptomatic/Critical at the request level. The deferred decision
+-- about natural temperaments (current-status.md) sits upstream of
+-- this behaviour.
+function NPCData.ComputeSymptoms(npc)
+	local entry = entries[npc]
+	if not entry then
+		return {}
+	end
+
+	local present = {}
+	for symptomKey, symptomData in pairs(SymptomData) do
+		if symptomData.humour
+			and symptomData.threshold
+			and symptomData.direction
+		then
+			local humourValue = entry.humours[symptomData.humour]
+			if humourValue then
+				if symptomData.direction == "excess"
+					and humourValue >= symptomData.threshold
+				then
+					table.insert(present, symptomKey)
+				elseif symptomData.direction == "deficiency"
+					and humourValue <= symptomData.threshold
+				then
+					table.insert(present, symptomKey)
+				end
+			end
+		end
+	end
+
+	return present
 end
 
 function NPCData.SetQuarantined(npc, value)

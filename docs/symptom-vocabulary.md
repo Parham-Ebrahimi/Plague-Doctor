@@ -96,24 +96,24 @@ horizontal slice is playable end-to-end.
 - **fever** — *"Patient's forehead and cheeks feel hot. The face
   looks flushed and ruddy."*
   Region: head. Discovery: skill_check (day-one: click).
-  Threshold: Blood > +5. Contribution: +8.
+  Threshold: Blood ≥ +5. Contribution: +8.
 
 - **bounding_pulse** — *"Pulse is fast and strong, easy to find
   and slightly forceful against the fingertips."*
   Region: chest (taken at the wrist or neck during chest
   examination). Discovery: skill_check (day-one: click).
-  Threshold: Blood > +15. Contribution: +12.
+  Threshold: Blood ≥ +15. Contribution: +12.
 
 ### Deficiency (negative Blood)
 
 - **pallor** — *"Lips, gums, and the insides of the eyelids look
   pale and bloodless."*
-  Region: head. Discovery: click. Threshold: Blood < -5.
+  Region: head. Discovery: click. Threshold: Blood ≤ -5.
   Contribution: -8.
 
 - **cold_extremities** — *"The hands and fingertips are
   noticeably cold even in a warm room."*
-  Region: arms. Discovery: click. Threshold: Blood < -15.
+  Region: arms. Discovery: click. Threshold: Blood ≤ -15.
   Contribution: -12.
 
 ---
@@ -124,24 +124,24 @@ horizontal slice is playable end-to-end.
 
 - **wet_cough** — *"Patient coughs periodically; the cough sounds
   wet and productive."*
-  Region: chest. Discovery: click. Threshold: Phlegm > +5.
+  Region: chest. Discovery: click. Threshold: Phlegm ≥ +5.
   Contribution: +8.
 
 - **swollen_ankles** — *"The ankles are visibly swollen. Pressing
   the skin briefly leaves an indent."*
-  Region: legs. Discovery: click. Threshold: Phlegm > +15.
+  Region: legs. Discovery: click. Threshold: Phlegm ≥ +15.
   Contribution: +12.
 
 ### Deficiency (negative Phlegm)
 
 - **dry_lips** — *"The lips are cracked and dry. The patient
   asks for water."*
-  Region: head. Discovery: click. Threshold: Phlegm < -5.
+  Region: head. Discovery: click. Threshold: Phlegm ≤ -5.
   Contribution: -8.
 
 - **flaky_skin** — *"Patches of dry, flaking skin on the
   forearms."*
-  Region: arms. Discovery: click. Threshold: Phlegm < -15.
+  Region: arms. Discovery: click. Threshold: Phlegm ≤ -15.
   Contribution: -12.
 
 ---
@@ -151,24 +151,24 @@ horizontal slice is playable end-to-end.
 ### Excess (positive Yellow Bile)
 
 - **jaundice** — *"The whites of the eyes have a yellow cast."*
-  Region: head. Discovery: click. Threshold: Yellow Bile > +5.
+  Region: head. Discovery: click. Threshold: Yellow Bile ≥ +5.
   Contribution: +8.
 
 - **tender_side** — *"The area below the ribs on the right side
   is tender to gentle pressure."*
   Region: chest. Discovery: skill_check (day-one: click).
-  Threshold: Yellow Bile > +15. Contribution: +12.
+  Threshold: Yellow Bile ≥ +15. Contribution: +12.
 
 ### Deficiency (negative Yellow Bile)
 
 - **sallow_skin** — *"The patient's skin has a dull, drained
   tone — not pale, but lifeless."*
-  Region: head. Discovery: click. Threshold: Yellow Bile < -5.
+  Region: head. Discovery: click. Threshold: Yellow Bile ≤ -5.
   Contribution: -8.
 
 - **weak_grip** — *"When asked to grip the doctor's hand, the
   patient's grip is noticeably weak."*
-  Region: arms. Discovery: click. Threshold: Yellow Bile < -15.
+  Region: arms. Discovery: click. Threshold: Yellow Bile ≤ -15.
   Contribution: -12.
 
 ---
@@ -179,25 +179,25 @@ horizontal slice is playable end-to-end.
 
 - **dark_undereyes** — *"The skin beneath the patient's eyes is
   darkened and hollow."*
-  Region: head. Discovery: click. Threshold: Black Bile > +5.
+  Region: head. Discovery: click. Threshold: Black Bile ≥ +5.
   Contribution: +8.
 
 - **swollen_bubo** — *"A hard, tender swelling has formed beneath
   the jaw, characteristic of plague."*
   Region: head (jaw/neck). Discovery: skill_check (day-one:
-  click). Threshold: Black Bile > +15. Contribution: +12.
+  click). Threshold: Black Bile ≥ +15. Contribution: +12.
 
 ### Deficiency (negative Black Bile)
 
 - **restless_movement** — *"The patient cannot sit still. Their
   legs and feet shift constantly."*
-  Region: legs. Discovery: click. Threshold: Black Bile < -5.
+  Region: legs. Discovery: click. Threshold: Black Bile ≤ -5.
   Contribution: -8.
 
 - **scattered_attention** — *"The patient cannot hold a thought.
   Their eyes dart; they change topic mid-sentence."*
   Region: passive (visible immediately on examination start).
-  Discovery: click. Threshold: Black Bile < -15. Contribution:
+  Discovery: click. Threshold: Black Bile ≤ -15. Contribution:
   -12.
 
 ---
