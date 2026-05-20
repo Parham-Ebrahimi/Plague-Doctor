@@ -212,6 +212,7 @@ RemoteEvents.RequestExamination.OnServerEvent:Connect(function(player, npc)
 		npcName = npc:GetAttribute("DisplayName") or entry.npcType,
 		stage = entry.stage,
 		symptoms = entry.symptoms,
+		presentSymptoms = NPCData.ComputeSymptoms(npc),
 		quarantined = entry.quarantined,
 		treatedByPlayer = NPCData.WasTreatedBy(npc, player),
 		satchel = SatchelData.GetSatchel(player),
